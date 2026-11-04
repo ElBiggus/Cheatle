@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cheatle</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <section class="card">
+      <h1>Cheatle</h1>
+      <p class="subtitle">Wordle helper driven by answer-list histogram scoring.</p>
+
+      <div class="status-row">
+        <span id="roundLabel">Round 1</span>
+        <span id="remainingLabel">Remaining answers: 0</span>
+      </div>
+
+      <div id="guessRow" class="guess-row" aria-label="Current guess"></div>
+
+      <section class="candidate-panel" aria-label="Top candidate guesses">
+        <div class="candidate-tabs" role="tablist" aria-label="Candidate list mode">
+          <button id="primaryTabButton" class="candidate-tab active" type="button" role="tab" aria-selected="true">Primary</button>
+          <button id="eliminationTabButton" class="candidate-tab" type="button" role="tab" aria-selected="false">Elimination</button>
+        </div>
+        <div class="candidate-header">
+          <h2 id="candidateTitle">Top Candidate Guesses</h2>
+          <span id="candidateCountLabel">Showing 0 of 0</span>
+        </div>
+        <div class="candidate-columns">
+          <span>#</span>
+          <button id="sortWordButton" type="button" class="candidate-sort-btn">Word</button>
+          <button id="sortScoreButton" type="button" class="candidate-sort-btn">Score</button>
+          <button id="sortEliminatesButton" type="button" class="candidate-sort-btn">Eliminates</button>
+        </div>
+        <div id="candidateList" class="candidate-list"></div>
+      </section>
+
+      <div class="legend">
+        <div><span class="legend-swatch swatch-unknown"></span>Unknown</div>
+        <div><span class="legend-swatch swatch-absent"></span>Not in word</div>
+        <div><span class="legend-swatch swatch-present"></span>Wrong position</div>
+        <div><span class="legend-swatch swatch-correct"></span>Correct</div>
+      </div>
+
+      <div class="actions">
+        <button id="nextGuessButton" type="button">Next guess</button>
+        <button id="resetButton" type="button" class="secondary">Reset</button>
+        <button id="loadCsvButton" type="button" class="secondary" hidden>Load answers.csv</button>
+      </div>
+      <input id="answersFileInput" type="file" accept=".csv,text/csv" hidden />
+
+      <p id="message" class="message" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
