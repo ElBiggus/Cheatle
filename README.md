@@ -9,7 +9,7 @@ Cheatle is a browser-based Wordle helper that uses science and magic to cut down
 Serve this folder over HTTP (recommended):
 
 ```powershell
-cd c:\DEV\Cheatle
+cd {your install path}
 python -m http.server 8000
 ```
 
@@ -51,5 +51,6 @@ Why make this, you may ask. Surely it defeats the spirit of the game? Well sure,
 
 ## Revision history
 
-04-11-2026: Initial commit
-05-11-2026: Fixed a couple of minor oddities in the list generation and selection UI
+- 04-11-2026: Initial commit
+- 05-11-2026: Fixed a couple of minor oddities in the list generation and selection UI
+- 05-11-2026: Fixed README.md
