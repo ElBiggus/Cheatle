@@ -48,3 +48,8 @@ Why make this, you may ask. Surely it defeats the spirit of the game? Well sure,
 2. ~~Add an "elimination only" candidate word list (i.e. words that use a minimum number of already-tried letters)~~ DONE
 3. ?
 4. PROFIT!
+
+## Revision history
+
+04-11-2026: Initial commit
+05-11-2026: Fixed a couple of minor oddities in the list generation and selection UI

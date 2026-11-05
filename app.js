@@ -66,7 +66,7 @@ function startGame(answers) {
   knownMinimumLetterCounts = new Map();
   guessedLetters = new Set();
   computeCandidateData();
-  currentGuess = primaryCandidates[0]?.word || "";
+  currentGuess = getTopDisplayedWord();
   boxStates = createInitialStatesForGuess();
 
   if (!currentGuess) {
@@ -390,14 +390,18 @@ function getSortedCandidatesForDisplay(model) {
       comparison = elimA - elimB;
     }
 
-    if (comparison === 0) {
-      comparison = a.word.localeCompare(b.word);
+    if (comparison !== 0) {
+      return activeSort.direction === "asc" ? comparison : -comparison;
     }
 
-    return activeSort.direction === "asc" ? comparison : -comparison;
+    return a.word.localeCompare(b.word);
   });
 
   return sorted;
+}
+
+function getTopDisplayedWord() {
+  return getSortedCandidatesForDisplay(getActiveCandidateModel())[0]?.word || "";
 }
 
 function getDisplayCandidatePool(candidates) {
@@ -710,7 +714,7 @@ nextGuessButton.addEventListener("click", () => {
   }
 
   computeCandidateData();
-  currentGuess = primaryCandidates[0]?.word || "";
+  currentGuess = getTopDisplayedWord();
   boxStates = createInitialStatesForGuess();
   round += 1;
 
@@ -731,7 +735,7 @@ resetButton.addEventListener("click", () => {
     [TAB_ELIMINATION]: { key: "score", direction: "desc" },
   };
   computeCandidateData();
-  currentGuess = primaryCandidates[0]?.word || "";
+  currentGuess = getTopDisplayedWord();
   boxStates = createInitialStatesForGuess();
   round = 1;
   nextGuessButton.disabled = false;
