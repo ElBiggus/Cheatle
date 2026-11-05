@@ -26,7 +26,8 @@ const TAB_ELIMINATION = "elimination";
 
 let allAnswers = [];
 let remainingAnswers = [];
-let globalHistogram = new Map();
+const POSITION_WEIGHTS = [0.7, 0.8, 0.9, 1.0, 1.1];
+let globalHistogram = { counts: new Map(), positionCounts: new Map(), weights: new Map() };
 let currentGuess = "";
 let boxStates = [STATE_UNKNOWN, STATE_UNKNOWN, STATE_UNKNOWN, STATE_UNKNOWN, STATE_UNKNOWN];
 let knownCorrectLetters = [null, null, null, null, null];
@@ -158,30 +159,49 @@ function renderGuess() {
 }
 
 function buildFrequencyHistogram(words) {
-  const histogram = new Map();
+  const counts = new Map();
+  const positionCounts = new Map();
 
   for (const word of words) {
-    for (const letter of word) {
-      histogram.set(letter, (histogram.get(letter) || 0) + 1);
-    }
+    [...word].forEach((letter, position) => {
+      counts.set(letter, (counts.get(letter) || 0) + 1);
+      if (!positionCounts.has(letter)) {
+        positionCounts.set(letter, new Array(POSITION_WEIGHTS.length).fill(0));
+      }
+      positionCounts.get(letter)[position] += 1;
+    });
   }
 
-  return histogram;
+  // Per letter: least common position gets the lowest weight, most common the highest.
+  const weights = new Map();
+  for (const [letter, perPosition] of positionCounts) {
+    const letterWeights = new Array(perPosition.length).fill(1);
+    perPosition
+      .map((count, position) => ({ count, position }))
+      .sort((a, b) => a.count - b.count || a.position - b.position)
+      .forEach((entry, rank) => {
+        letterWeights[entry.position] = POSITION_WEIGHTS[rank];
+      });
+    weights.set(letter, letterWeights);
+  }
+
+  return { counts, positionCounts, weights };
 }
 
 function scoreWord(word, histogram) {
   let score = 0;
   const seen = new Set();
 
-  for (const letter of word) {
+  [...word].forEach((letter, position) => {
     if (seen.has(letter)) {
-      continue;
+      return;
     }
     seen.add(letter);
-    score += histogram.get(letter) || 0;
-  }
+    const weight = histogram.weights.get(letter)?.[position] ?? 1;
+    score += (histogram.counts.get(letter) || 0) * weight;
+  });
 
-  return score;
+  return Math.round(score);
 }
 
 function rankWordsByHistogram(words, histogram) {

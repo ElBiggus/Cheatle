@@ -54,3 +54,4 @@ Why make this, you may ask. Surely it defeats the spirit of the game? Well sure,
 - 04-11-2026: Initial commit
 - 05-11-2026: Fixed a couple of minor oddities in the list generation and selection UI
 - 05-11-2026: Fixed README.md
+- 05-11-2026: Added positional weighting to the "score" ranking; weights are currently placeholder values until I've done some deeper analysis
