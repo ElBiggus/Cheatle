@@ -34,7 +34,9 @@ http://localhost:8000
 
 Use **Reset** to restart from the full answer set.
 
-Candidate words can be sorted by clicking the column headers. The "Eliminates" figure shows an estimated worst-case for how many words will be eliminated from the list if that word is chosen - it's not 100% accurate, but in most cases where it's wrong it should be _conservatively_ wrong.
+Run the feedback and ranking regression tests with `node --test tests\feedback.test.js`.
+
+Candidate words can be sorted by clicking the column headers. The primary list defaults to score, and the elimination list defaults to entropy. The "Eliminates" figure shows an estimated worst-case for how many words will be eliminated from the list if that word is chosen - it's not 100% accurate, but in most cases where it's wrong it should be _conservatively_ wrong.
 
 While I can't guarantee it's flawless I have tested it against around 100 archived Wordles with no failures. Using the default "score" ranking method it can generally match Wordle Bot, but a combination of "common sense" (for example, while *DENNY* may be a "more likely" answer based on letter frequency *PENNY* is probably a better bet) and choosing carefully between score and elimination metrics I can beat the bot around 40% of the time.
 
@@ -44,10 +46,9 @@ Why make this, you may ask. Surely it defeats the spirit of the game? Well sure,
 
 ## To-Do
 
-1. Use a less naive approach to histogram scoring, taking letter grouping and other language features into account - for example S is a common letter which means words with a double S score disproportionately high given the number of SS words in the list.
-2. ~~Add an "elimination only" candidate word list (i.e. words that use a minimum number of already-tried letters)~~ DONE
-3. ?
-4. PROFIT!
+1. Run some simulations to see if word suggestion can be further refined.
+2. ?
+3. PROFIT!
 
 ## Revision history
 
@@ -55,3 +56,4 @@ Why make this, you may ask. Surely it defeats the spirit of the game? Well sure,
 - 05-11-2026: Fixed a couple of minor oddities in the list generation and selection UI
 - 05-11-2026: Fixed README.md
 - 05-11-2026: Added positional weighting to the "score" ranking; weights are currently placeholder values until I've done some deeper analysis
+- 06-11-2026: Elimination word list is now ranked by an entropy evaluation rather than simple minimum elimination value - slightly more effective, although it comes at a performance cost; also fixed UI bug that could erroneously highlight unveriified letters when picking from elimination list

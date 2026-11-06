@@ -173,7 +173,7 @@ h1 {
 
 .candidate-columns {
   display: grid;
-  grid-template-columns: 46px 1fr 84px 116px;
+  grid-template-columns: 46px 1fr 84px 116px 84px;
   gap: 8px;
   padding: 8px 12px;
   color: #5c6474;
@@ -223,7 +223,7 @@ h1 {
   background: transparent;
   color: #172131;
   display: grid;
-  grid-template-columns: 46px 1fr 84px 116px;
+  grid-template-columns: 46px 1fr 84px 116px 84px;
   gap: 8px;
   align-items: center;
   text-align: left;
@@ -251,6 +251,11 @@ h1 {
 }
 
 .candidate-row .candidate-elim {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.candidate-row .candidate-entropy {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }

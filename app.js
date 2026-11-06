@@ -19,8 +19,11 @@ const eliminationTabButton = document.getElementById("eliminationTabButton");
 const sortWordButton = document.getElementById("sortWordButton");
 const sortScoreButton = document.getElementById("sortScoreButton");
 const sortEliminatesButton = document.getElementById("sortEliminatesButton");
+const sortEntropyButton = document.getElementById("sortEntropyButton");
 
 const MAX_VISIBLE_CANDIDATES = 100;
+const FEEDBACK_PATTERN_WEIGHTS = [81, 27, 9, 3, 1];
+const FEEDBACK_PATTERN_COUNT = 243;
 const TAB_PRIMARY = "primary";
 const TAB_ELIMINATION = "elimination";
 
@@ -35,14 +38,16 @@ let knownMinimumLetterCounts = new Map();
 let guessedLetters = new Set();
 let primaryCandidates = [];
 let eliminationCandidates = [];
+let eliminationCandidateCount = 0;
 let primaryCandidateEliminations = new Map();
 let eliminationCandidateEliminations = new Map();
 let activeCandidateTab = TAB_PRIMARY;
 let candidateSortByTab = {
   [TAB_PRIMARY]: { key: "score", direction: "desc" },
-  [TAB_ELIMINATION]: { key: "score", direction: "desc" },
+  [TAB_ELIMINATION]: { key: "entropy", direction: "desc" },
 };
 let round = 1;
+let guessMetricsCache = new Map();
 
 init().catch((error) => {
   handleLoadError(error);
@@ -61,7 +66,7 @@ function startGame(answers) {
   activeCandidateTab = TAB_PRIMARY;
   candidateSortByTab = {
     [TAB_PRIMARY]: { key: "score", direction: "desc" },
-    [TAB_ELIMINATION]: { key: "score", direction: "desc" },
+    [TAB_ELIMINATION]: { key: "entropy", direction: "desc" },
   };
   knownCorrectLetters = [null, null, null, null, null];
   knownMinimumLetterCounts = new Map();
@@ -112,6 +117,7 @@ function handleLoadError(error) {
     loadCsvButton.hidden = false;
     primaryCandidates = [];
     eliminationCandidates = [];
+    eliminationCandidateCount = 0;
     primaryCandidateEliminations = new Map();
     eliminationCandidateEliminations = new Map();
     renderCandidateList();
@@ -123,6 +129,7 @@ function handleLoadError(error) {
   resetButton.disabled = true;
   primaryCandidates = [];
   eliminationCandidates = [];
+  eliminationCandidateCount = 0;
   primaryCandidateEliminations = new Map();
   eliminationCandidateEliminations = new Map();
   renderCandidateList();
@@ -161,31 +168,53 @@ function renderGuess() {
 function buildFrequencyHistogram(words) {
   const counts = new Map();
   const positionCounts = new Map();
+  const uniqueWordCounts = new Map();
+  const doubleOccurrences = new Map();
 
   for (const word of words) {
-    [...word].forEach((letter, position) => {
+    const uniqueLetters = new Set(word);
+    for (const letter of uniqueLetters) {
       counts.set(letter, (counts.get(letter) || 0) + 1);
+      uniqueWordCounts.set(letter, (uniqueWordCounts.get(letter) || 0) + 1);
+    }
+
+    [...word].forEach((letter, position) => {
       if (!positionCounts.has(letter)) {
         positionCounts.set(letter, new Array(POSITION_WEIGHTS.length).fill(0));
       }
       positionCounts.get(letter)[position] += 1;
     });
+
+    for (const letter of uniqueLetters) {
+      const letterCountInWord = word.split('').filter(c => c === letter).length;
+      if (letterCountInWord > 1) {
+        doubleOccurrences.set(letter, (doubleOccurrences.get(letter) || 0) + 1);
+      }
+    }
   }
 
-  // Per letter: least common position gets the lowest weight, most common the highest.
+  // Per letter: weight by relative positional frequency, normalized to 0.8-1.2
   const weights = new Map();
   for (const [letter, perPosition] of positionCounts) {
-    const letterWeights = new Array(perPosition.length).fill(1);
-    perPosition
-      .map((count, position) => ({ count, position }))
-      .sort((a, b) => a.count - b.count || a.position - b.position)
-      .forEach((entry, rank) => {
-        letterWeights[entry.position] = POSITION_WEIGHTS[rank];
-      });
+    const maxCount = Math.max(...perPosition);
+    const letterWeights = perPosition.map(count => {
+      if (maxCount === 0) return 1;
+      // Normalize to 0.8-1.2 range so best position gets ~1.2, worst ~0.8
+      return 0.8 + 0.4 * (count / maxCount);
+    });
     weights.set(letter, letterWeights);
   }
 
-  return { counts, positionCounts, weights };
+  // clusterFactor: how often is a letter repeated in a word?
+  // Higher factor means the letter is frequently doubled (like 'S' in 'SS').
+  const clusterFactors = new Map();
+  for (const letter of uniqueWordCounts.keys()) {
+    const doubleCount = doubleOccurrences.get(letter) || 0;
+    const totalUnique = uniqueWordCounts.get(letter);
+    clusterFactors.set(letter, doubleCount / totalUnique);
+  }
+
+  return { counts, positionCounts, weights, clusterFactors };
 }
 
 function scoreWord(word, histogram) {
@@ -194,11 +223,17 @@ function scoreWord(word, histogram) {
 
   [...word].forEach((letter, position) => {
     if (seen.has(letter)) {
+      const weight = histogram.weights.get(letter)?.[position] ?? 1;
+      const count = histogram.counts.get(letter) || 0;
+      const cf = histogram.clusterFactors.get(letter) || 0;
+      score += (count * weight) * cf;
       return;
     }
     seen.add(letter);
     const weight = histogram.weights.get(letter)?.[position] ?? 1;
-    score += (histogram.counts.get(letter) || 0) * weight;
+    const count = histogram.counts.get(letter) || 0;
+    const cf = histogram.clusterFactors.get(letter) || 0;
+    score += (count * weight) * (1.0 - cf);
   });
 
   return Math.round(score);
@@ -250,21 +285,30 @@ function rankWordsForElimination(words) {
       }
     }
 
-    const eliminationPriority = (untestedCount * 10) - testedCount;
     return {
       word,
       score: scoreWord(word, globalHistogram),
-      eliminationPriority,
       testedCount,
       untestedCount,
     };
   });
 
+  // Prioritize words that haven't been tested yet to maximize information gain
   const allUntestedOnly = rankedWithStats.filter((entry) => entry.testedCount === 0);
   const sourcePool = allUntestedOnly.length > 0 ? allUntestedOnly : rankedWithStats;
 
+  // Rank by histogram score first so the entropy evaluation is over high-quality candidates
+  const sortedByScore = [...sourcePool].sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return a.word.localeCompare(b.word);
+  });
+
+  // Limit pool size to avoid performance issues with entropy calculation
+  // 1000 is a safe upper bound for most common word lists
+  const restrictedPool = sortedByScore.slice(0, 1000);
+
   const knownLetters = buildKnownLettersSet();
-  const ranked = sourcePool.map((entry) => {
+  const ranked = restrictedPool.map((entry) => {
     let knownLetterBonus = 0;
     for (const letter of new Set(entry.word)) {
       if (knownLetters.has(letter)) {
@@ -272,12 +316,15 @@ function rankWordsForElimination(words) {
       }
     }
 
+    const entropy = getGuessMetrics(entry.word).entropy;
+
     return {
       word: entry.word,
       score: entry.score,
-      eliminationPriority: entry.eliminationPriority + knownLetterBonus,
+      eliminationPriority: entropy, // Using entropy as the primary ranker
       testedCount: entry.testedCount,
       untestedCount: entry.untestedCount,
+      knownLetterBonus,
     };
   });
 
@@ -291,14 +338,19 @@ function rankWordsForElimination(words) {
     return a.word.localeCompare(b.word);
   });
 
-  return ranked;
+  return { candidates: ranked, totalCount: sourcePool.length };
 }
 
 function computeCandidateData() {
+  // Rebuild histogram from the current remaining answer set for dynamic weighting
+  globalHistogram = buildFrequencyHistogram(remainingAnswers);
+  guessMetricsCache.clear();
   primaryCandidates = rankWordsByHistogram(remainingAnswers, globalHistogram);
-  eliminationCandidates = rankWordsForElimination(allAnswers);
-  primaryCandidateEliminations = computeEliminationsForDisplayCandidates(primaryCandidates, remainingAnswers);
-  eliminationCandidateEliminations = computeEliminationsForDisplayCandidates(eliminationCandidates, remainingAnswers);
+  const eliminationResult = rankWordsForElimination(allAnswers);
+  eliminationCandidates = eliminationResult.candidates;
+  eliminationCandidateCount = eliminationResult.totalCount;
+  primaryCandidateEliminations = computeEliminationsForDisplayCandidates(primaryCandidates);
+  eliminationCandidateEliminations = computeEliminationsForDisplayCandidates(eliminationCandidates);
 }
 
 function getActiveCandidateModel() {
@@ -306,6 +358,7 @@ function getActiveCandidateModel() {
     return {
       title: "Top Elimination Candidates",
       candidates: eliminationCandidates,
+      totalCount: eliminationCandidateCount,
       eliminations: eliminationCandidateEliminations,
       sort: candidateSortByTab[TAB_ELIMINATION],
     };
@@ -314,6 +367,7 @@ function getActiveCandidateModel() {
   return {
     title: "Top Candidate Guesses",
     candidates: primaryCandidates,
+    totalCount: primaryCandidates.length,
     eliminations: primaryCandidateEliminations,
     sort: candidateSortByTab[TAB_PRIMARY],
   };
@@ -336,7 +390,10 @@ function renderCandidateList() {
   }
 
   const visibleCandidates = getSortedCandidatesForDisplay(model);
-  candidateCountLabel.textContent = `Showing ${visibleCandidates.length} of ${model.candidates.length}`;
+  const rankedCount = model.candidates.length < model.totalCount
+    ? ` (${model.candidates.length} ranked)`
+    : "";
+  candidateCountLabel.textContent = `Showing ${visibleCandidates.length} of ${model.totalCount}${rankedCount}`;
 
   visibleCandidates.forEach((candidate, index) => {
     const rowButton = document.createElement("button");
@@ -346,14 +403,18 @@ function renderCandidateList() {
       rowButton.classList.add("selected");
     }
 
+    const entropyVal = candidate.entropy ?? candidate.eliminationPriority ?? getCachedEntropy(candidate.word);
+    const entropyDisplay = entropyVal ? entropyVal.toFixed(3) : "-";
+
     rowButton.innerHTML = [
       `<span>${index + 1}</span>`,
       `<span class="candidate-word">${candidate.word.toUpperCase()}</span>`,
       `<span class="candidate-score">${candidate.score}</span>`,
       `<span class="candidate-elim">${formatEliminations(model.eliminations.get(candidate.word))}</span>`,
+      `<span class="candidate-entropy">${entropyDisplay}</span>`,
     ].join("");
 
-    rowButton.setAttribute("aria-label", `Use guess ${candidate.word}, score ${candidate.score}, eliminates ${formatEliminations(model.eliminations.get(candidate.word))} words guaranteed`);
+    rowButton.setAttribute("aria-label", `Use guess ${candidate.word}, score ${candidate.score}, eliminates ${formatEliminations(model.eliminations.get(candidate.word))} words guaranteed, entropy ${entropyDisplay}`);
     rowButton.addEventListener("click", () => {
       selectCandidateGuess(candidate.word);
     });
@@ -380,6 +441,7 @@ function renderSortButtons() {
     { button: sortWordButton, key: "word" },
     { button: sortScoreButton, key: "score" },
     { button: sortEliminatesButton, key: "eliminates" },
+    { button: sortEntropyButton, key: "entropy" },
   ];
 
   controls.forEach(({ button, key }) => {
@@ -408,6 +470,10 @@ function getSortedCandidatesForDisplay(model) {
       const elimA = model.eliminations.get(a.word) || 0;
       const elimB = model.eliminations.get(b.word) || 0;
       comparison = elimA - elimB;
+    } else if (activeSort.key === "entropy") {
+      const entA = a.entropy ?? a.eliminationPriority ?? getCachedEntropy(a.word);
+      const entB = b.entropy ?? b.eliminationPriority ?? getCachedEntropy(b.word);
+      comparison = entA - entB;
     }
 
     if (comparison !== 0) {
@@ -463,62 +529,77 @@ function formatEliminations(value) {
 }
 
 function buildFeedbackPattern(guess, answer) {
-  const pattern = [0, 0, 0, 0, 0];
-  const unmatchedAnswerCounts = new Map();
+  let pattern = 0;
+  let usedAnswerPositions = 0;
+  let correctGuessPositions = 0;
 
   for (let i = 0; i < 5; i += 1) {
     if (guess[i] === answer[i]) {
-      pattern[i] = 2;
-    } else {
-      const answerLetter = answer[i];
-      unmatchedAnswerCounts.set(answerLetter, (unmatchedAnswerCounts.get(answerLetter) || 0) + 1);
+      usedAnswerPositions |= 1 << i;
+      correctGuessPositions |= 1 << i;
+      pattern += 2 * FEEDBACK_PATTERN_WEIGHTS[i];
     }
   }
 
   for (let i = 0; i < 5; i += 1) {
-    if (pattern[i] === 2) {
+    if (correctGuessPositions & (1 << i)) {
       continue;
     }
 
-    const guessLetter = guess[i];
-    const available = unmatchedAnswerCounts.get(guessLetter) || 0;
-    if (available > 0) {
-      pattern[i] = 1;
-      unmatchedAnswerCounts.set(guessLetter, available - 1);
+    for (let j = 0; j < 5; j += 1) {
+      if (!(usedAnswerPositions & (1 << j)) && guess[i] === answer[j]) {
+        usedAnswerPositions |= 1 << j;
+        pattern += FEEDBACK_PATTERN_WEIGHTS[i];
+        break;
+      }
     }
   }
 
-  return pattern.join("");
+  return pattern;
 }
 
-function computeGuaranteedEliminationsForGuess(guess, possibleAnswers) {
-  const total = possibleAnswers.length;
-  if (total <= 1) {
-    return 0;
-  }
+function calculateGuessMetrics(guess, possibleAnswers) {
+  const buckets = new Uint32Array(FEEDBACK_PATTERN_COUNT);
+  const observedPatterns = [];
 
-  const buckets = new Map();
   for (const answer of possibleAnswers) {
     const pattern = buildFeedbackPattern(guess, answer);
-    buckets.set(pattern, (buckets.get(pattern) || 0) + 1);
-  }
-
-  let largestBucket = 0;
-  for (const count of buckets.values()) {
-    if (count > largestBucket) {
-      largestBucket = count;
+    if (buckets[pattern] === 0) {
+      observedPatterns.push(pattern);
     }
+    buckets[pattern] += 1;
   }
 
-  return total - largestBucket;
+  let entropy = 0;
+  let largestBucket = 0;
+  const total = possibleAnswers.length;
+  // Preserve first-seen bucket order so entropy ties retain their existing ranking.
+  for (const pattern of observedPatterns) {
+    const count = buckets[pattern];
+    const p = count / total;
+    entropy -= p * Math.log2(p);
+    largestBucket = Math.max(largestBucket, count);
+  }
+  return { entropy, guaranteedEliminations: total - largestBucket };
 }
 
-function computeEliminationsForDisplayCandidates(candidates, possibleAnswers) {
+function getGuessMetrics(word) {
+  if (!guessMetricsCache.has(word)) {
+    guessMetricsCache.set(word, calculateGuessMetrics(word, remainingAnswers));
+  }
+  return guessMetricsCache.get(word);
+}
+
+function getCachedEntropy(word) {
+  return getGuessMetrics(word).entropy;
+}
+
+function computeEliminationsForDisplayCandidates(candidates) {
   const eliminationMap = new Map();
   const displayCandidates = candidates.slice(0, MAX_VISIBLE_CANDIDATES);
 
   for (const candidate of displayCandidates) {
-    const guaranteedEliminations = computeGuaranteedEliminationsForGuess(candidate.word, possibleAnswers);
+    const guaranteedEliminations = getGuessMetrics(candidate.word).guaranteedEliminations;
     eliminationMap.set(candidate.word, guaranteedEliminations);
   }
 
@@ -615,7 +696,7 @@ function createInitialStatesForGuess() {
   }
 
   for (let i = 0; i < 5; i += 1) {
-    if (knownCorrectLetters[i]) {
+    if (knownCorrectLetters[i] && currentGuess[i] === knownCorrectLetters[i]) {
       initialStates[i] = STATE_CORRECT;
     }
   }
@@ -726,6 +807,7 @@ nextGuessButton.addEventListener("click", () => {
     nextGuessButton.disabled = true;
     primaryCandidates = [];
     eliminationCandidates = [];
+    eliminationCandidateCount = 0;
     primaryCandidateEliminations = new Map();
     eliminationCandidateEliminations = new Map();
     renderCandidateList();
@@ -752,7 +834,7 @@ resetButton.addEventListener("click", () => {
   activeCandidateTab = TAB_PRIMARY;
   candidateSortByTab = {
     [TAB_PRIMARY]: { key: "score", direction: "desc" },
-    [TAB_ELIMINATION]: { key: "score", direction: "desc" },
+    [TAB_ELIMINATION]: { key: "entropy", direction: "desc" },
   };
   computeCandidateData();
   currentGuess = getTopDisplayedWord();
@@ -775,6 +857,10 @@ sortScoreButton.addEventListener("click", () => {
 
 sortEliminatesButton.addEventListener("click", () => {
   setCandidateSort("eliminates");
+});
+
+sortEntropyButton.addEventListener("click", () => {
+  setCandidateSort("entropy");
 });
 
 primaryTabButton.addEventListener("click", () => {

@@ -1,2 +1,5 @@
 base_word_metrics.csv
 export_word_metrics.ps1
+IDEA.md
+word_metrics.csv
+tests/feedback.test.js
