@@ -3,23 +3,25 @@ const STATE_ABSENT = 1;
 const STATE_PRESENT = 2;
 const STATE_CORRECT = 3;
 
-const guessRow = document.getElementById("guessRow");
-const nextGuessButton = document.getElementById("nextGuessButton");
-const resetButton = document.getElementById("resetButton");
-const loadCsvButton = document.getElementById("loadCsvButton");
-const answersFileInput = document.getElementById("answersFileInput");
-const roundLabel = document.getElementById("roundLabel");
-const remainingLabel = document.getElementById("remainingLabel");
-const message = document.getElementById("message");
-const candidateTitle = document.getElementById("candidateTitle");
-const candidateList = document.getElementById("candidateList");
-const candidateCountLabel = document.getElementById("candidateCountLabel");
-const primaryTabButton = document.getElementById("primaryTabButton");
-const eliminationTabButton = document.getElementById("eliminationTabButton");
-const sortWordButton = document.getElementById("sortWordButton");
-const sortScoreButton = document.getElementById("sortScoreButton");
-const sortEliminatesButton = document.getElementById("sortEliminatesButton");
-const sortEntropyButton = document.getElementById("sortEntropyButton");
+const inWorker = typeof document === "undefined";
+const element = (id) => inWorker ? null : document.getElementById(id);
+const guessRow = element("guessRow");
+const nextGuessButton = element("nextGuessButton");
+const resetButton = element("resetButton");
+const loadCsvButton = element("loadCsvButton");
+const answersFileInput = element("answersFileInput");
+const roundLabel = element("roundLabel");
+const remainingLabel = element("remainingLabel");
+const message = element("message");
+const candidateTitle = element("candidateTitle");
+const candidateList = element("candidateList");
+const candidateCountLabel = element("candidateCountLabel");
+const primaryTabButton = element("primaryTabButton");
+const eliminationTabButton = element("eliminationTabButton");
+const sortWordButton = element("sortWordButton");
+const sortScoreButton = element("sortScoreButton");
+const sortEliminatesButton = element("sortEliminatesButton");
+const sortEntropyButton = element("sortEntropyButton");
 
 const MAX_VISIBLE_CANDIDATES = 100;
 const FEEDBACK_PATTERN_WEIGHTS = [81, 27, 9, 3, 1];
@@ -28,6 +30,7 @@ const TAB_PRIMARY = "primary";
 const TAB_ELIMINATION = "elimination";
 
 let allAnswers = [];
+let originalSolutionWords = new Set();
 let remainingAnswers = [];
 const POSITION_WEIGHTS = [0.7, 0.8, 0.9, 1.0, 1.1];
 let globalHistogram = { counts: new Map(), positionCounts: new Map(), weights: new Map() };
@@ -49,12 +52,19 @@ let candidateSortByTab = {
 let round = 1;
 let guessMetricsCache = new Map();
 
-init().catch((error) => {
-  handleLoadError(error);
-});
+if (!inWorker) {
+  init().catch((error) => {
+    handleLoadError(error);
+  });
+}
 
 async function init() {
-  allAnswers = await loadAnswersFromFetch();
+  const [answers, originalSolutions] = await Promise.all([
+    loadWordsFromFetch("answers.csv"),
+    loadWordsFromFetch("og-answers.csv"),
+  ]);
+  allAnswers = answers;
+  originalSolutionWords = new Set(originalSolutions);
   startGame(allAnswers);
 }
 
@@ -88,14 +98,18 @@ function startGame(answers) {
   loadCsvButton.hidden = true;
 }
 
-async function loadAnswersFromFetch() {
-  const response = await fetch("answers.csv", { cache: "no-store" });
+async function loadWordsFromFetch(fileName) {
+  const response = await fetch(fileName, { cache: "no-store" });
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
+    throw new Error(`Failed to load ${fileName}: HTTP ${response.status}`);
   }
 
   const text = await response.text();
-  return parseWordsFromText(text);
+  const words = parseWordsFromText(text);
+  if (words.length === 0) {
+    throw new Error(`No valid 5-letter words found in ${fileName}`);
+  }
+  return words;
 }
 
 function parseWordsFromText(text) {
@@ -124,7 +138,7 @@ function handleLoadError(error) {
     return;
   }
 
-  setMessage(`Failed to load answers.csv: ${error.message}`, true);
+  setMessage(error.message, true);
   nextGuessButton.disabled = true;
   resetButton.disabled = true;
   primaryCandidates = [];
@@ -399,6 +413,9 @@ function renderCandidateList() {
     const rowButton = document.createElement("button");
     rowButton.type = "button";
     rowButton.className = "candidate-row";
+    if (originalSolutionWords.has(candidate.word)) {
+      rowButton.classList.add("original-solution");
+    }
     if (candidate.word === currentGuess) {
       rowButton.classList.add("selected");
     }
@@ -751,6 +768,7 @@ function rememberTestedLettersFromCurrentGuess() {
   }
 }
 
+if (!inWorker) {
 loadCsvButton.addEventListener("click", () => {
   answersFileInput.click();
 });
@@ -872,3 +890,4 @@ eliminationTabButton.addEventListener("click", () => {
   activeCandidateTab = TAB_ELIMINATION;
   renderCandidateList();
 });
+}

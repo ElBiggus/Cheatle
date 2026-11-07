@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cheatle sequential simulation</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <section class="card">
+      <h1>Sequential simulation</h1>
+      <p class="subtitle">Play the first primary choice for each answer in alphabetical order, without a turn limit.</p>
+      <p>Enter a starting word. If it is not an answer, the next alphabetical answer is used.</p>
+      <p>GO! asks where to save a new CSV. The chosen file will be overwritten.</p>
+      <label for="simulationStart">Starting word</label>
+      <input id="simulationStart" type="text" maxlength="5" autocomplete="off" spellcheck="false" />
+      <label class="simulation-option">
+        <input id="favorTop10OgWords" type="checkbox" />
+        Favour top 10 OG words
+      </label>
+      <label class="simulation-option">
+        <input id="useOgAnswerPool" type="checkbox" />
+        Use OG answer pool
+      </label>
+      <div class="actions">
+        <button id="simulationGo" type="button">GO!</button>
+        <button id="simulationStop" class="secondary" type="button" disabled>STOP!</button>
+      </div>
+      <h2>Progress</h2>
+      <p id="simulationStatus" class="message" role="status" aria-live="polite">Ready.</p>
+      <h2>Completed games</h2>
+      <pre id="simulationLog" class="simulation-log" aria-label="Simulation results"></pre>
+    </section>
+  </main>
+  <script src="simulation-csv.js" defer></script>
+  <script src="simulation-sequential.js" defer></script>
+</body>
+</html>

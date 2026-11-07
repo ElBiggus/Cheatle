@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cheatle simulation</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <section class="card">
+      <h1>Simulation</h1>
+      <p class="subtitle">Explore the first three primary and elimination choices on every turn, up to six turns.</p>
+      <p>GO! asks where to save a new CSV. The chosen file will be overwritten.</p>
+      <div class="actions">
+        <button id="simulationGo" type="button">GO!</button>
+        <button id="simulationStop" class="secondary" type="button" disabled>STOP!</button>
+      </div>
+      <h2>Progress</h2>
+      <p id="simulationStatus" class="message" role="status" aria-live="polite">Ready.</p>
+      <h2>Completed games</h2>
+      <pre id="simulationLog" class="simulation-log" aria-label="Simulation results"></pre>
+      <p><a href="index.html">Back to Cheatle</a></p>
+    </section>
+  </main>
+  <script src="simulation-csv.js" defer></script>
+  <script src="simulation.js" defer></script>
+</body>
+</html>

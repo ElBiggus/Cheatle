@@ -10,7 +10,7 @@
   <main class="app-shell">
     <section class="card">
       <h1>Cheatle</h1>
-      <p class="subtitle">Wordle helper driven by answer-list histogram scoring.</p>
+      <p class="subtitle">Wordle helper for the smooth of brain.</p>
 
       <div class="status-row">
         <span id="roundLabel">Round 1</span>
@@ -30,8 +30,8 @@
         </div>
         <div class="candidate-columns">
           <span>#</span>
-          <button id="sortWordButton" type="button" class="candidate-sort-btn">Word</button>
-          <button id="sortScoreButton" type="button" class="candidate-sort-btn">Score</button>
+          <button id="sortWordButton" type="button" class="candidate-sort-btn" title="To Your Mother">Word</button>
+          <button id="sortScoreButton" type="button" class="candidate-sort-btn" title="Positionally weighted histogram score">Score</button>
           <button id="sortEliminatesButton" type="button" class="candidate-sort-btn" title="Minimum guaranteed words that will be eliminated">Eliminates</button>
           <button id="sortEntropyButton" type="button" class="candidate-sort-btn" title="Potential information gain">Entropy</button>
         </div>
@@ -43,6 +43,7 @@
         <div><span class="legend-swatch swatch-absent"></span>Not in word</div>
         <div><span class="legend-swatch swatch-present"></span>Wrong position</div>
         <div><span class="legend-swatch swatch-correct"></span>Correct</div>
+        <div><span class="legend-swatch swatch-original-solution"></span>Original solution pool</div>
       </div>
 
       <div class="actions">
@@ -53,6 +54,8 @@
       <input id="answersFileInput" type="file" accept=".csv,text/csv" hidden />
 
       <p id="message" class="message" aria-live="polite"></p>
+      <p>GitHub: <a href="https://github.com/ElBiggus/Cheatle" target="_blank" rel="noopener noreferrer">https://github.com/ElBiggus/Cheatle</a></p>
+
     </section>
   </main>
 

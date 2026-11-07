@@ -3,3 +3,5 @@ export_word_metrics.ps1
 IDEA.md
 word_metrics.csv
 tests/feedback.test.js
+tests/simulation.test.js
+tests/simulation-sequential.test.js

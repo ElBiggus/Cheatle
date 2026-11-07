@@ -215,6 +215,29 @@ h1 {
   overflow-y: auto;
 }
 
+.simulation-log {
+  max-height: 320px;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid var(--outline);
+  border-radius: 12px;
+  background: #fcfaf6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.simulation-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-weight: 600;
+}
+
+.simulation-option input {
+  margin: 0;
+}
+
 .candidate-row {
   width: 100%;
   border: none;
@@ -232,6 +255,10 @@ h1 {
   font-weight: 600;
 }
 
+.candidate-row.original-solution {
+  background: #e8f5e9;
+}
+
 .candidate-row:hover {
   background: #eef2fb;
 }
@@ -239,6 +266,11 @@ h1 {
 .candidate-row.selected {
   background: rgba(47, 111, 237, 0.17);
   color: #0f2a5f;
+}
+
+.candidate-row.selected.original-solution {
+  background: #e8f5e9;
+  box-shadow: inset 4px 0 #2f6fed;
 }
 
 .candidate-row .candidate-word {
@@ -292,6 +324,7 @@ h1 {
 .swatch-absent { background: var(--absent); }
 .swatch-present { background: var(--present); }
 .swatch-correct { background: var(--correct); }
+.swatch-original-solution { background: #e8f5e9; }
 
 .actions {
   margin-top: 18px;
