@@ -1,6 +1,6 @@
 # Cheatle
 
-Too smooth-brained for Worlde? Let me help with that!
+Too smooth-brained for Wordle? Let me help with that!
 
 Cheatle is a browser-based Wordle helper that uses science and magic to cut down on the amount of thinking required. No AI, just statistics!
 
@@ -71,4 +71,4 @@ Second, while there is some skill involved in the game, a large part of the diff
 - 05-11-2026: Fixed README.md
 - 05-11-2026: Added positional weighting to the "score" ranking; weights are currently placeholder values until I've done some deeper analysis
 - 06-11-2026: Elimination word list is now ranked by an entropy evaluation rather than simple minimum elimination value - slightly more effective, although it comes at a performance cost; also fixed UI bug that could erroneously highlight unveriified letters when picking from elimination list
-- 07-11-2026: Massive entropy performance boost, additional UI tweaks, added the non-canonical OG solution pool as a "hint" to potentially improve accuracy, waffled on in the README for ages because I'm overtired and overcaffeinated
+- 07-11-2026: Massive entropy performance boost, additional UI tweaks, added the non-canonical OG solution pool as a "hint" to potentially improve accuracy, waffled on in the README for ages because I'm overtired and overcaffeinated (and then fixed frankly shocking misspelling of "Wordle")
